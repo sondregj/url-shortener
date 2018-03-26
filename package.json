@@ -1,0 +1,19 @@
+{
+	"name": "fcc-url-shortener",
+	"version": "1.0.0",
+	"description": "A simple URL shortener microservice",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/sondregj/fcc-url-shortener.git"
+	},
+	"main": "server.js",
+	"scripts": {
+		"test": "mocha"
+	},
+	"author": "Sondre Gjellestad",
+	"license": "MIT",
+	"dependencies": {
+		"body-parser": "^1.18.2",
+		"express": "^4.16.3"
+	}
+}
