@@ -1,39 +1,60 @@
 const // Modules
 	express = require('express'),
 	http = require('http'),
-	https = require('https')
+	https = require('https'),
+  mongoose = require('mongoose'),
+  bodyParser = require('body-parser')
 
 const // Ports
 	port = process.env.PORT || 8080,
-	sslPort = 8443
+	sslPort = 443
 
-const urlStore = []
+
+mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true})
+
+const ShortURL = require('./models/ShortURL')
 
 const app = express()
 
-// Routes
-app.get('/:url', (req, res) => {
-	const index = urlStore
-		.map(x => x.short_url)
-		.indexOf(`http://localhost:8080/${req.params.url}`)
+app.use('/public', express.static(process.cwd() + '/public'));
 
-	index === -1
-		? res.send('URL Not Found.')
-		: res.redirect(urlStore[index]['original_url'])
+app.use(bodyParser.urlencoded({extended: false}))
+app.use(bodyParser.json())
+
+// Routes
+app.get('/', function(req, res){
+  res.sendFile(process.cwd() + '/views/index.html');
+});
+
+app.get('/api/shorturl/:id', (req, res) => {
+  const id = req.params.id
+  
+  if (!parseInt(id)) {
+    return res.send({error: 'Invalid short URL.'})
+  }
+  
+  const shortURL = parseInt(id)
+  
+  return ShortURL.findOne({shortURL})
+    .exec()
+    .then(doc => res.redirect(doc.originalURL))
+    .catch(err => res.send({error: 'Short URL not found.'}))
 })
 
-app.get('/new/*', (req, res) => {
-	if (!/(http|https):\/\/(\w+:{0,1}\w*)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%!\-\/]))?/.test(req.params[0])) {
-		return res.json({success: false, msg: 'Invalid URL.'})
+app.post('/api/shorturl/new', (req, res) => {
+  const originalURL = req.body.url
+  
+	if (!/(http|https):\/\/(\w+:{0,1}\w*)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%!\-\/]))?/.test(originalURL)) {
+		return res.send({success: false, msg: 'Invalid URL.'})
 	}
 
-	const urlObject = {
-		original_url: req.params[0],
-		short_url: `http://localhost:8080/${urlStore.length}`
-	}
+	const shortUrl = new ShortURL({ originalURL })
 
-	urlStore.push(urlObject)
-	res.json(urlObject)
+	return shortUrl
+    .save()
+    .then(doc => doc.toObject())
+    .then(({originalURL, shortURL}) => res.send({shortURL, originalURL}))
+    .catch(err => res.send({error: 'Short URL creation failed.'}))
 })
 
 http // Start HTTP server
